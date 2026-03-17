@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "654288677511",
+    "project_id": "financesharing-212b3",
+    "storage_bucket": "financesharing-212b3.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:654288677511:android:1c6a867593c7766f0a2622",
+        "android_client_info": {
+          "package_name": "com.example.financesharing"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDzuBBhw_s6tVfmSNCNdT1j7mKKHO6lYmA"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

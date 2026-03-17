@@ -1,0 +1,108 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function isMe(uid) {
+      return signedIn() && request.auth.uid == uid;
+    }
+
+    function isEventOwner(eventId) {
+      return signedIn()
+        && get(/databases/$(database)/documents/events/$(eventId)).data.ownerUid == request.auth.uid;
+    }
+
+    function isEventParticipant(eventId) {
+      return signedIn()
+        && request.auth.uid in get(/databases/$(database)/documents/events/$(eventId)).data.participantUids;
+    }
+
+    function isEventInvited(eventId) {
+      return signedIn()
+        && request.auth.uid in get(/databases/$(database)/documents/events/$(eventId)).data.invitedUids;
+    }
+
+    match /users/{uid} {
+      allow read, write: if isMe(uid);
+    }
+
+    // Public lookup indexes (exact doc reads)
+    match /usernames/{username} {
+      allow read: if signedIn();
+      allow create: if signedIn() && request.resource.data.uid == request.auth.uid;
+      allow update, delete: if false;
+    }
+
+    match /emails/{email} {
+      allow read: if signedIn();
+      allow create: if signedIn() && request.resource.data.uid == request.auth.uid;
+      allow update, delete: if false;
+    }
+
+    match /events/{eventId} {
+      allow create: if signedIn() && request.resource.data.ownerUid == request.auth.uid;
+      // Use resource.data (no get()) so list queries work reliably
+      allow read: if signedIn()
+        && (
+          resource.data.ownerUid == request.auth.uid
+          || request.auth.uid in resource.data.participantUids
+          || request.auth.uid in resource.data.invitedUids
+        );
+      // MVP: allow owner and accepted participants to update event totals/arrays.
+      allow update: if signedIn()
+        && (
+          resource.data.ownerUid == request.auth.uid
+          || request.auth.uid in resource.data.participantUids
+        )
+        || (
+          signedIn()
+          && request.auth.uid in resource.data.invitedUids
+          && request.resource.data.diff(resource.data).changedKeys()
+              .hasOnly(['invitedUids', 'participantUids'])
+        );
+      allow delete: if isEventOwner(eventId);
+
+      match /participants/{participantId} {
+        allow read: if signedIn()
+          && (
+            get(/databases/$(database)/documents/events/$(eventId)).data.ownerUid == request.auth.uid
+            || request.auth.uid in get(/databases/$(database)/documents/events/$(eventId)).data.participantUids
+            || request.auth.uid in get(/databases/$(database)/documents/events/$(eventId)).data.invitedUids
+          );
+        // Owner can create participants (invite), user can update own status
+        allow create: if isEventOwner(eventId);
+        allow update: if isEventOwner(eventId) || isMe(participantId);
+        allow delete: if isEventOwner(eventId);
+      }
+
+      match /contributions/{contributionId} {
+        allow read: if signedIn()
+          && (
+            get(/databases/$(database)/documents/events/$(eventId)).data.ownerUid == request.auth.uid
+            || request.auth.uid in get(/databases/$(database)/documents/events/$(eventId)).data.participantUids
+            || request.auth.uid in get(/databases/$(database)/documents/events/$(eventId)).data.invitedUids
+          );
+        allow create: if isEventOwner(eventId) || isEventParticipant(eventId);
+        allow update, delete: if false;
+      }
+    }
+
+    match /invitations/{invitationId} {
+      allow create: if signedIn()
+        && request.resource.data.fromUid == request.auth.uid
+        && request.resource.data.toUid is string
+        && request.resource.data.eventId is string;
+
+      allow read: if signedIn()
+        && (resource.data.toUid == request.auth.uid || resource.data.fromUid == request.auth.uid);
+
+      // Recipient can accept/decline
+      allow update: if signedIn() && resource.data.toUid == request.auth.uid;
+
+      allow delete: if false;
+    }
+  }
+}
+
