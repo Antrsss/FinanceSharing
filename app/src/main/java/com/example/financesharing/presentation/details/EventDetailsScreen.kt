@@ -16,6 +16,7 @@ import androidx.compose.material.icons.rounded.ArrowBack
 import androidx.compose.material.icons.rounded.GroupAdd
 import androidx.compose.material.icons.rounded.Payments
 import androidx.compose.material.icons.rounded.PersonAdd
+import androidx.compose.material.icons.rounded.CheckCircle
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -109,6 +110,11 @@ fun EventDetailsScreen(
         val progress = if (event.targetAmountMinor <= 0L) 0f
         else (event.currentAmountMinor.toFloat() / event.targetAmountMinor.toFloat()).coerceIn(0f, 1f)
 
+        val requiredPerPersonMinor = remember(event.targetAmountMinor, event.expectedParticipantsCount) {
+            val count = event.expectedParticipantsCount.coerceAtLeast(1)
+            if (count <= 0) 0L else (event.targetAmountMinor / count.toLong())
+        }
+
         val totals = remember(uiState.contributions) {
             uiState.contributions
                 .groupBy { c ->
@@ -147,6 +153,11 @@ fun EventDetailsScreen(
             Spacer(modifier = Modifier.height(12.dp))
             Text(
                 text = "Дедлайн: ${event.deadline}",
+                style = MaterialTheme.typography.bodySmall
+            )
+            Spacer(modifier = Modifier.height(6.dp))
+            Text(
+                text = "Каждый должен скинуть: ${MoneyFormatter.formatMinor(requiredPerPersonMinor, currency)} (из ${event.expectedParticipantsCount} чел.)",
                 style = MaterialTheme.typography.bodySmall
             )
 
@@ -216,13 +227,34 @@ fun EventDetailsScreen(
                         is Participant.Guest -> p.displayName to "guest:${p.displayName}"
                     }
                     val sumMinor = totals[key] ?: 0L
+                    val isEnough = sumMinor >= requiredPerPersonMinor && requiredPerPersonMinor > 0L
 
-                    Column(modifier = Modifier.fillMaxWidth()) {
-                        Text(text = displayName, style = MaterialTheme.typography.bodyLarge)
-                        Text(
-                            text = MoneyFormatter.formatMinor(sumMinor, currency),
-                            style = MaterialTheme.typography.bodySmall
-                        )
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(text = displayName, style = MaterialTheme.typography.bodyLarge)
+                            Text(
+                                text = MoneyFormatter.formatMinor(sumMinor, currency),
+                                style = MaterialTheme.typography.bodySmall
+                            )
+                            if (p is Participant.User && p.status == com.example.financesharing.domain.model.ParticipantStatus.INVITED) {
+                                Text(
+                                    text = "Ожидается ответ",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.outline
+                                )
+                            }
+                        }
+                        if (isEnough) {
+                            Icon(
+                                imageVector = Icons.Rounded.CheckCircle,
+                                contentDescription = "Оплачено",
+                                tint = MaterialTheme.colorScheme.tertiary
+                            )
+                        }
                     }
                 }
             }

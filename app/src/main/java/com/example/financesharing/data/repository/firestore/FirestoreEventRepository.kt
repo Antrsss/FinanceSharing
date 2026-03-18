@@ -118,6 +118,7 @@ class FirestoreEventRepository(
         description: String,
         currency: Currency,
         targetAmountMinor: Long,
+        expectedParticipantsCount: Int,
         deadline: LocalDate
     ): String {
         val uid = uid()
@@ -125,6 +126,9 @@ class FirestoreEventRepository(
         val participantRef = eventRef.collection("participants").document(uid)
 
         val now = Timestamp.now()
+        val myUsername = runCatching {
+            firestore.collection("users").document(uid).get().await().getString("username")
+        }.getOrNull().orEmpty().ifBlank { auth.currentUser?.email ?: "me" }
         val doc = mapOf(
             "ownerUid" to uid,
             "title" to title.trim(),
@@ -132,6 +136,7 @@ class FirestoreEventRepository(
             "currency" to currency.code,
             "targetAmount" to targetAmountMinor,
             "currentAmount" to 0L,
+            "expectedParticipantsCount" to expectedParticipantsCount.coerceAtLeast(1),
             "deadline" to Timestamp(deadline.atStartOfDay(ZoneId.systemDefault()).toInstant().epochSecond, 0),
             "createdAt" to now,
             // for Home queries
@@ -142,7 +147,7 @@ class FirestoreEventRepository(
         val ownerParticipant = mapOf(
             "type" to "user",
             "uid" to uid,
-            "username" to (auth.currentUser?.email ?: "me"),
+            "username" to myUsername,
             "status" to ParticipantStatus.ACCEPTED.name
         )
 
@@ -228,10 +233,18 @@ class FirestoreEventRepository(
         return emailDoc.getString("uid")
     }
 
+    private suspend fun findUserDisplayNameByUidOrNull(uid: String): String? {
+        return runCatching {
+            val snap = firestore.collection("users").document(uid).get().await()
+            snap.getString("username")
+        }.getOrNull()?.trim()?.takeIf { it.isNotBlank() }
+    }
+
     suspend fun inviteUser(
         eventId: String,
         toUid: String,
-        eventTitle: String
+        eventTitle: String,
+        invitedDisplayName: String
     ): String {
         val fromUid = uid()
         require(toUid != fromUid) { "Cannot invite yourself" }
@@ -243,6 +256,7 @@ class FirestoreEventRepository(
         val participantRef = eventRef.collection("participants").document(toUid)
 
         val now = Timestamp.now()
+        val toUsername = invitedDisplayName.trim().ifBlank { findUserDisplayNameByUidOrNull(toUid).orEmpty() }
         firestore.runBatch { batch ->
             batch.set(
                 invRef,
@@ -260,7 +274,7 @@ class FirestoreEventRepository(
                 mapOf(
                     "type" to "user",
                     "uid" to toUid,
-                    "username" to "",
+                    "username" to toUsername,
                     "status" to ParticipantStatus.INVITED.name
                 )
             )
@@ -279,6 +293,7 @@ class FirestoreEventRepository(
         val currency = Currency.fromCode(getString("currency"))
         val target = getLong("targetAmount") ?: 0L
         val current = getLong("currentAmount") ?: 0L
+        val expected = (getLong("expectedParticipantsCount") ?: 1L).toInt().coerceAtLeast(1)
         val deadlineTs = getTimestamp("deadline") ?: Timestamp.now()
         val createdAt = getTimestamp("createdAt") ?: Timestamp.now()
 
@@ -294,6 +309,7 @@ class FirestoreEventRepository(
             currency = currency,
             targetAmountMinor = target,
             currentAmountMinor = current,
+            expectedParticipantsCount = expected,
             deadline = deadline,
             createdAtEpochMillis = createdAt.toDate().time
         )

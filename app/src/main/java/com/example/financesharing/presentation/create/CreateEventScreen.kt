@@ -57,6 +57,7 @@ fun CreateEventScreen(
     var title by remember { mutableStateOf("") }
     var description by remember { mutableStateOf("") }
     var targetAmount by remember { mutableStateOf("") } // major units
+    var expectedParticipants by remember { mutableStateOf("10") }
 
     var currency by remember { mutableStateOf(Currency.RUB) }
     var currencyExpanded by remember { mutableStateOf(false) }
@@ -109,6 +110,15 @@ fun CreateEventScreen(
                 label = { Text("Описание") },
                 modifier = Modifier.fillMaxWidth(),
                 minLines = 3
+            )
+
+            OutlinedTextField(
+                value = expectedParticipants,
+                onValueChange = { expectedParticipants = it.filter(Char::isDigit).take(4) },
+                label = { Text("Предполагаемое количество участников") },
+                modifier = Modifier.fillMaxWidth(),
+                singleLine = true,
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
             )
 
             Row(
@@ -182,11 +192,13 @@ fun CreateEventScreen(
                 onClick = {
                     val amountMajor = targetAmount.replace(',', '.').toDoubleOrNull() ?: 0.0
                     val amountMinor = (amountMajor * 100.0).toLong()
+                    val expectedCount = expectedParticipants.toIntOrNull()?.coerceAtLeast(1) ?: 1
                     viewModel.create(
                         title = title,
                         description = description,
                         currency = currency,
                         targetAmountMinor = amountMinor,
+                        expectedParticipantsCount = expectedCount,
                         deadline = deadline
                     )
                 },

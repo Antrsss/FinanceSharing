@@ -33,6 +33,12 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.material.icons.rounded.Notifications
 import androidx.compose.material.icons.rounded.AccountCircle
 import androidx.compose.material3.IconButton
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.unit.Dp
 import com.example.financesharing.presentation.components.GiftEventCard
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -43,6 +49,7 @@ fun HomeScreen(
     onEventClick: (String) -> Unit,
     onInvitationsClick: () -> Unit,
     onProfileClick: () -> Unit,
+    hasNotifications: Boolean,
     modifier: Modifier = Modifier
 ) {
     val uiState by viewModel.uiState.collectAsState()
@@ -68,10 +75,7 @@ fun HomeScreen(
                 },
                 actions = {
                     IconButton(onClick = onInvitationsClick) {
-                        Icon(
-                            imageVector = Icons.Rounded.Notifications,
-                            contentDescription = "Приглашения"
-                        )
+                        NotificationBell(hasNotifications = hasNotifications)
                     }
                     IconButton(onClick = onProfileClick) {
                         Icon(
@@ -132,6 +136,31 @@ fun HomeScreen(
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun NotificationBell(hasNotifications: Boolean, dotSize: Dp = 8.dp) {
+    val color = MaterialTheme.colorScheme.error
+    Box(
+        modifier = Modifier
+            .size(48.dp)
+            .drawBehind {
+                if (hasNotifications) {
+                    val radius = dotSize.toPx() / 2f
+                    drawCircle(
+                        color = color,
+                        radius = radius,
+                        center = Offset(size.width - radius * 1.2f, radius * 1.2f)
+                    )
+                }
+            },
+        contentAlignment = Alignment.Center
+    ) {
+        Icon(
+            imageVector = Icons.Rounded.Notifications,
+            contentDescription = "Приглашения"
+        )
     }
 }
 

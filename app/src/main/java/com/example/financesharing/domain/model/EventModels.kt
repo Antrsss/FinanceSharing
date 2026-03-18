@@ -10,6 +10,7 @@ data class GiftEvent(
     val currency: Currency,
     val targetAmountMinor: Long,
     val currentAmountMinor: Long,
+    val expectedParticipantsCount: Int,
     val deadline: LocalDate,
     val createdAtEpochMillis: Long
 )

@@ -68,7 +68,12 @@ class EventDetailsViewModel(
 
     suspend fun inviteByUsernameOrEmail(eventId: String, eventTitle: String, query: String): Boolean {
         val toUid = repo.findUserUidByUsernameOrEmail(query) ?: return false
-        repo.inviteUser(eventId = eventId, toUid = toUid, eventTitle = eventTitle)
+        repo.inviteUser(
+            eventId = eventId,
+            toUid = toUid,
+            eventTitle = eventTitle,
+            invitedDisplayName = query.trim()
+        )
         return true
     }
 }

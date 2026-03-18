@@ -58,11 +58,29 @@ class FirestoreInvitationRepository {
             val eventRef = firestore.collection("events").document(eventId)
             val participantRef = eventRef.collection("participants").document(currentUid)
 
+            val userSnap = if (accept) tx.get(firestore.collection("users").document(currentUid)) else null
+
             val newInvStatus = if (accept) InvitationStatus.ACCEPTED else InvitationStatus.DECLINED
             val newPartStatus = if (accept) ParticipantStatus.ACCEPTED else ParticipantStatus.DECLINED
 
             tx.update(invRef, "status", newInvStatus.name)
-            tx.update(participantRef, "status", newPartStatus.name)
+
+            if (accept) {
+                val username = (userSnap?.getString("username") ?: "").trim()
+                if (username.isNotBlank()) {
+                    tx.update(
+                        participantRef,
+                        mapOf(
+                            "status" to newPartStatus.name,
+                            "username" to username
+                        )
+                    )
+                } else {
+                    tx.update(participantRef, "status", newPartStatus.name)
+                }
+            } else {
+                tx.update(participantRef, "status", newPartStatus.name)
+            }
 
             tx.update(eventRef, "invitedUids", FieldValue.arrayRemove(currentUid))
             if (accept) {

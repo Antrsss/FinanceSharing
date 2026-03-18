@@ -13,6 +13,7 @@ firebaseBom = "34.10.0"  # Add Firebase BOM version
 coroutines = "1.9.0"      # Add coroutines version
 navigationCompose = "2.8.4"  # Add navigation version
 lifecycleViewmodelCompose = "2.8.7"  # Add ViewModel Compose version
+work = "2.10.0"
 
 [libraries]
 # AndroidX
@@ -52,6 +53,9 @@ kotlinx-coroutines-play-services = { group = "org.jetbrains.kotlinx", name = "ko
 junit = { group = "junit", name = "junit", version.ref = "junit" }
 androidx-junit = { group = "androidx.test.ext", name = "junit", version.ref = "junitVersion" }
 androidx-espresso-core = { group = "androidx.test.espresso", name = "espresso-core", version.ref = "espressoCore" }
+
+# WorkManager
+androidx-work-runtime-ktx = { group = "androidx.work", name = "work-runtime-ktx", version.ref = "work" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }

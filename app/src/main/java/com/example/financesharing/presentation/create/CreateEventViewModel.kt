@@ -28,6 +28,7 @@ class CreateEventViewModel(
         description: String,
         currency: Currency,
         targetAmountMinor: Long,
+        expectedParticipantsCount: Int,
         deadline: LocalDate
     ) {
         viewModelScope.launch {
@@ -38,6 +39,7 @@ class CreateEventViewModel(
                     description = description,
                     currency = currency,
                     targetAmountMinor = targetAmountMinor,
+                    expectedParticipantsCount = expectedParticipantsCount,
                     deadline = deadline
                 )
                 _uiState.value = CreateEventUiState.Created(id)

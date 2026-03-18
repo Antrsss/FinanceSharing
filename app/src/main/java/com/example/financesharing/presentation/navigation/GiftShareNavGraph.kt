@@ -4,7 +4,11 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -19,6 +23,10 @@ import com.example.financesharing.presentation.home.GiftEventsViewModelFactory
 import com.example.financesharing.presentation.home.HomeScreen
 import com.example.financesharing.presentation.invitations.InvitationsScreen
 import com.example.financesharing.presentation.profile.ProfileScreen
+import com.example.financesharing.notifications.WorkScheduler
+import com.example.financesharing.data.repository.firestore.FirestoreInvitationRepository
+import kotlinx.coroutines.flow.catch
+import kotlinx.coroutines.flow.collectLatest
 
 sealed class GiftShareScreen(val route: String) {
     data object Login : GiftShareScreen("auth/login")
@@ -39,6 +47,13 @@ fun GiftShareNavGraph(
     modifier: Modifier = Modifier
 ) {
     val session by authViewModel.session.collectAsState()
+    val context = LocalContext.current
+
+    LaunchedEffect(session.isLoggedIn) {
+        if (session.isLoggedIn) {
+            WorkScheduler.schedule(context.applicationContext)
+        }
+    }
 
     LaunchedEffect(session.isLoggedIn) {
         val current = navController.currentDestination?.route
@@ -82,6 +97,16 @@ fun GiftShareNavGraph(
 
         composable(route = GiftShareScreen.Home.route) {
             val eventsViewModel: GiftEventsViewModel = viewModel(factory = GiftEventsViewModelFactory())
+            val invitesRepo = remember { FirestoreInvitationRepository() }
+            var hasInvites by remember { mutableStateOf(false) }
+
+            LaunchedEffect(Unit) {
+                invitesRepo.observePendingInvitations()
+                    .catch { hasInvites = false }
+                    .collectLatest { list ->
+                        hasInvites = list.isNotEmpty()
+                    }
+            }
             HomeScreen(
                 viewModel = eventsViewModel,
                 onCreateEventClick = {
@@ -95,7 +120,8 @@ fun GiftShareNavGraph(
                 },
                 onProfileClick = {
                     navController.navigate(GiftShareScreen.Profile.route)
-                }
+                },
+                hasNotifications = hasInvites
             )
         }
 
